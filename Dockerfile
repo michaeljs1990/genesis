@@ -3,6 +3,8 @@ MAINTAINER Gabe Conradi <gabe.conradi@gmail.com>
 
 ENV OUTPUT_DIR /output
 ENV GENESIS_DIR /genesis
+ENV KICKSTART genesis.ks.template
+
 VOLUME /output
 
 # needed for livecd-creator

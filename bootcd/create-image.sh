@@ -57,7 +57,7 @@ echo '### fixing resolv.conf in genesis.ks'
 ns=`grep nameserver /etc/resolv.conf`
 [[ -z $ns ]] && ns='nameserver 8.8.8.8
 nameserver 8.8.4.4'
-perl -pe "s/%%LocalNameservers%%/$ns/" genesis.ks.template > "$tmpdir/genesis.ks"
+perl -pe "s/%%LocalNameservers%%/$ns/" $KICKSTART > "$tmpdir/genesis.ks"
 
 echo '### creating livecd'
 livecd-creator -c "$tmpdir/genesis.ks" -f genesis -t "$tmpdir/live/" --cache="$tmpdir/livecache/" -v
