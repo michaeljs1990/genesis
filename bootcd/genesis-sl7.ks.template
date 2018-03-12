@@ -60,6 +60,7 @@ traceroute
 util-linux-ng
 vim-minimal
 yum
+vim
 
 # needed for rvm
 gpgme
