@@ -9,12 +9,14 @@ if [[ $EUID -ne 0 ]]; then
   echo "This script must be run as root" 
   exit 1
 fi
+
 for cmd in createrepo livecd-creator livecd-iso-to-pxeboot; do
   if [[  `command -v $cmd >/dev/null 2>&1` ]]; then
     echo "$cmd required, but not found in PATH.  Aborting." 1>&2
     exit 1
   fi
 done
+
 if [[ ! -d $OUTPUT_DIR ]] ; then
   echo "OUTPUT_DIR must be a directory"
   exit 1

@@ -32,7 +32,7 @@ Scripts and configuration files used by Genesis in the bootcd image
 mkdir -p $RPM_BUILD_ROOT/root
 install -m 644 -T %{SOURCE0}   $RPM_BUILD_ROOT/root/.bash_profile.genesis_scripts
 
-# add our init scripts
+# install upstart files
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 install -m 755 -T %{SOURCE1}   $RPM_BUILD_ROOT/etc/init.d/network-prep
 install -m 755 -T %{SOURCE6}   $RPM_BUILD_ROOT/etc/init.d/genesis
@@ -44,11 +44,14 @@ install -m 644 -T %{SOURCE8}   $RPM_BUILD_ROOT/etc/sysconfig/genesis
 # add our binaries
 mkdir -p $RPM_BUILD_ROOT/sbin/
 mkdir -p $RPM_BUILD_ROOT/usr/bin/
+
 # add helper for agetty
 install -m 555 -T %{SOURCE5}   $RPM_BUILD_ROOT/usr/bin/autologin
+
 # add *getty wrappers
 install -m 555 -T %{SOURCE2}   $RPM_BUILD_ROOT/sbin/agetty-wrapper
 install -m 555 -T %{SOURCE3}   $RPM_BUILD_ROOT/sbin/mingetty-wrapper
+
 # add the bootloader and its wrapper
 install -m 555 -T %{SOURCE4}   $RPM_BUILD_ROOT/usr/bin/genesis-bootloader
 install -m 755 -T %{SOURCE7}   $RPM_BUILD_ROOT/usr/bin/run-genesis-bootloader
@@ -58,6 +61,7 @@ install -m 755 -T %{SOURCE7}   $RPM_BUILD_ROOT/usr/bin/run-genesis-bootloader
 
 %files
 %defattr(-, root, root)
+# add our init scripts
 /etc/init.d/genesis
 /etc/init.d/network-prep
 %config /etc/sysconfig/genesis
@@ -70,17 +74,45 @@ install -m 755 -T %{SOURCE7}   $RPM_BUILD_ROOT/usr/bin/run-genesis-bootloader
 
 %post
 # root should attempt to tail the genesis log file when logged in
+# TODO: these if statements should be cleaned up and instead use some fancy
+# script that we include in the package since this is really just a
+# check for systemd vs upstart.
+
 grep -q genesis_scripts /root/.bash_profile || \
   echo '. /root/.bash_profile.genesis_scripts' >> /root/.bash_profile
 
+
+%if 0%{?el6}
 # use wrappers to dynamically allow autologin
 sed -e 's|^exec /sbin/mingetty|exec /sbin/mingetty-wrapper|' /etc/init/tty.conf > /etc/init/tty.override
 sed -e 's|^exec /sbin/agetty|exec /sbin/agetty-wrapper|' /etc/init/serial.conf > /etc/init/serial.override
+%endif
 
+%if 0%{?el7}
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat <<EOF > /etc/systemd/system/getty@tty1.service.d/override.conf
+[Service]
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty-wrapper --noclear %I $TERM
+EOF
+
+mkdir -p /etc/systemd/system/serial-getty@ttyS1.service.d
+cat <<EOF > /etc/systemd/system/serial-getty@ttyS1.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty-wrapper --keep-baud 115200,38400,9600 --noclear %I $TERM
+EOF
+%endif
+
+# chkconfig is nice enough to forward requests to systemd for us
 chkconfig --add network-prep
 chkconfig --add genesis
 
 %changelog
+* Sun Mar 11 2018 Michael Schuett <michaeljs1990@gmail.com> 0.11
+- add support for installing on systems with systemd
+
 * Tue Jun 21 2017 Nahum Shalman <nshalman@uber.com> 0.10
 - use an init script to launch genesis bootloader
 - with new kernel command line flag GENESIS_AUTOTAIL:
