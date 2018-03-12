@@ -6,7 +6,7 @@
 # these should be a better way to do this.  TODO find it!
 
 ### BEGIN INIT INFO
-# X-Start-Before:    $network
+# Required-Start:    $network
 # Default-Start:     2 3 4 5
 # Description:       setup network interfaces for dhclient to configure
 ### END INIT INFO
@@ -19,6 +19,7 @@ DEVICE=$int
 BOOTPROTO=dhcp
 ONBOOT=no
 NAME=nic
+DHCP_HOSTNAME=genesis
 EOF
 		# explicitly bring up only one interface now to prevent
 		# using lots of dhcp dynamic addresses

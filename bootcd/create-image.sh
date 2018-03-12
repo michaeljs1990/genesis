@@ -9,12 +9,14 @@ if [[ $EUID -ne 0 ]]; then
   echo "This script must be run as root" 
   exit 1
 fi
+
 for cmd in createrepo livecd-creator livecd-iso-to-pxeboot; do
   if [[  `command -v $cmd >/dev/null 2>&1` ]]; then
     echo "$cmd required, but not found in PATH.  Aborting." 1>&2
     exit 1
   fi
 done
+
 if [[ ! -d $OUTPUT_DIR ]] ; then
   echo "OUTPUT_DIR must be a directory"
   exit 1
@@ -57,7 +59,7 @@ echo '### fixing resolv.conf in genesis.ks'
 ns=`grep nameserver /etc/resolv.conf`
 [[ -z $ns ]] && ns='nameserver 8.8.8.8
 nameserver 8.8.4.4'
-perl -pe "s/%%LocalNameservers%%/$ns/" genesis.ks.template > "$tmpdir/genesis.ks"
+perl -pe "s/%%LocalNameservers%%/$ns/" $KICKSTART > "$tmpdir/genesis.ks"
 
 echo '### creating livecd'
 livecd-creator -c "$tmpdir/genesis.ks" -f genesis -t "$tmpdir/live/" --cache="$tmpdir/livecache/" -v

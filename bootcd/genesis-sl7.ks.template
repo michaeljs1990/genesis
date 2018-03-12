@@ -1,0 +1,209 @@
+bootloader --location=mbr --append="toram"
+lang en_US.UTF-8
+keyboard us
+timezone America/New_York
+auth --useshadow --enablemd5
+selinux --disabled
+firewall --disabled
+rootpw --iscrypted $1$zva3nR9O$xdHSmelk7Nl2AFY7Luwmz0
+services --enabled sshd
+
+# latest stable SL-7 
+url                   --url=http://ftp.scientificlinux.org/linux/scientific/7x/x86_64/os/
+repo --name=base      --baseurl=http://ftp.scientificlinux.org/linux/scientific/7x/x86_64/os/
+repo --name=epel      --baseurl=http://mirrors.rit.edu/epel/7/x86_64/
+repo --name=fastbugs  --baseurl=http://ftp.scientificlinux.org/linux/scientific/7x/x86_64/updates/fastbugs/
+repo --name=security  --baseurl=http://ftp.scientificlinux.org/linux/scientific/7x/x86_64/updates/security/
+repo --name=local     --baseurl=http://localhost:8000/repo/
+
+%packages
+acl
+attr
+authconfig
+basesystem
+bash
+bind-utils
+chkconfig
+coreutils
+cpio
+device-mapper
+device-mapper-event
+dhclient
+dmidecode
+e2fsprogs
+filesystem
+firewalld
+glibc
+initscripts
+iproute
+-iptables-ipv6
+-iptables
+iputils
+kernel
+ncurses
+ntpdate
+openssh-server
+openssh-clients
+passwd
+policycoreutils
+procps
+rootfiles
+rpm
+rsyslog
+screen
+setup
+shadow-utils
+sudo
+system-config-firewall-base
+tmux
+traceroute
+util-linux-ng
+vim-minimal
+yum
+vim
+
+# needed for rvm
+gpgme
+which
+
+genesis_scripts
+
+# for gem install
+gcc
+glibc-headers
+
+%end
+
+%post
+set -e
+repo_base_url="http://ftp.scientificlinux.org/linux/scientific/7x/x86_64"
+# Apply Genesis Live OS customizations
+echo '*****************************************'
+echo '*** Genesis Live OS Image Customizr ***'
+
+echo '>>>> set hostname'
+echo "HOSTNAME=genesis" >> /etc/sysconfig/network
+
+# iptables packages are pulled in no matter what %packages says
+echo '>>>> disabling iptables and ip6tables services'
+rm -f /etc/rc*.d/*ip{,6}tables
+
+# Setup fstab for reading from ram
+echo '>>>> updating fstab'
+cat > /etc/fstab <<_EOF_
+tmpfs     /               tmpfs   defaults         0 0
+devpts    /dev/pts        devpts  gid=5,mode=620   0 0
+tmpfs     /dev/shm        tmpfs   defaults         0 0
+proc      /proc           proc    defaults         0 0
+sysfs     /sys            sysfs   defaults         0 0
+tmpfs     /tmp            tmpfs   mode=1777         0
+tmpfs     /var/tmp        tmpfs   mode=1777         0
+tmpfs     /var/cache/yum  tmpfs   mode=1777         0
+_EOF_
+
+echo '>>>> setting /etc/resolv.conf to point to public resolvers'
+# this is necessary to resolve get.rvm.io and friends in %post
+cat >/etc/resolv.conf <<"__EOF__"
+%%LocalNameservers%%
+__EOF__
+
+echo '>>>> rewriting /etc/motd'
+cat > /etc/motd <<"__EOF__"
+
+                    o             ___         ( ( (        _     _         !!!      
+     '*`         ` /_\ '         /_\ `*     '. ___ .'    o' \,=./ `o    `  _ _  '   
+    (o o)       - (o o) -       (o o)      '  (> <) '       (o o)      -  (OXO)  -  
+ooO--(_)--Ooo-ooO--(_)--Ooo-ooO--(_)--Ooo-ooO--(_)--Ooo-ooO--(_)--Ooo-ooO--(_)--Ooo-
+
+      ,----..                                                                    
+     /   /   \                                               ,--,                
+    |   :     :                ,---,                       ,--.'|                
+    .   |  ;. /            ,-+-. /  |            .--.--.   |  |,      .--.--.    
+    .   ; /--`     ,---.  ,--.'|'   |   ,---.   /  /    '  `--'_     /  /    '   
+    ;   | ;  __   /     \|   |  ,"' |  /     \ |  :  /`./  ,' ,'|   |  :  /`./   
+    |   : |.' .' /    /  |   | /  | | /    /  ||  :  ;_    '  | |   |  :  ;_     
+    .   | '_.' :.    ' / |   | |  | |.    ' / | \  \    `. |  | :    \  \    `.  
+    '   ; : \  |'   ;   /|   | |  |/ '   ;   /|  `----.   \'  : |__   `----.   \ 
+    '   | '/  .''   |  / |   | |--'  '   |  / | /  /`--'  /|  | '.'| /  /`--'  / 
+    |   :    /  |   :    |   |/      |   :    |'--'.     / ;  :    ;'--'.     /  
+     \   \ .'    \   \  /'---'        \   \  /   `--'---'  |  ,   /   `--'---'   
+      `---`       `----'               `----'               ---`-'               
+
+__EOF__
+
+
+echo '>>>> rewriting /etc/issue'
+cat <<EOF > /etc/issue
+Genesis OS v0.1
+Kernel \r
+BuildDate: $(date)
+
+EOF
+
+echo '>>>> configuring rsyslog'
+cat >> /etc/rsyslog.conf <<EOL
+
+# genesis 
+local0.*                                                /var/log/genesis.log
+local0.*                                                /dev/tty7
+EOL
+
+# Install RVM
+echo '>>>> setting up rvm'
+# in kickstart post, $PATH isnt set so make sure rvm doesnt freak out
+export PATH=/usr/bin:/bin:$PATH
+echo '>>>> building ruby'
+bash -c 'gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 && \curl -sSL https://get.rvm.io | bash -s stable'
+bash -c 'source /etc/profile.d/rvm.sh && rvm install --default 2.2 && rvm cleanup sources'
+bash -c 'source /etc/profile.d/rvm.sh && rvm list'
+bash -c 'source /etc/profile.d/rvm.sh && ruby --version'
+
+echo '>>>> creating /etc/gemrc'
+cat >> /etc/gemrc <<EOF
+install: --no-ri --no-rdoc
+update: --no-ri --no-rdoc
+EOF
+
+echo '>>>> installing bundler gem'
+su - -c 'source /etc/profile.d/rvm.sh && gem install bundler'
+
+echo '>>>> creating /root/Gemfile'
+# gem versions match Gemfiles in src/<GEM>/Gemfile
+cat > /root/Gemfile  <<EOF
+source 'https://rubygems.org'
+
+gem 'ruby-termios', '~> 0.9.4'
+gem 'httparty'
+gem 'json'
+EOF
+
+echo '>>>> loading gems'
+su - -c 'source /etc/profile.d/rvm.sh && bundle install --system --gemfile /root/Gemfile'
+
+# TODO get these into the Gemfile
+echo '>>>> installing basic genesis framework gems'
+bash -c "source /etc/profile.d/rvm.sh && gem install genesis_retryingfetcher"
+bash -c "source /etc/profile.d/rvm.sh && gem install genesis_promptcli"
+bash -c "source /etc/profile.d/rvm.sh && gem install genesis_framework"
+bash -c "source /etc/profile.d/rvm.sh && gem list"
+
+yum clean all
+
+# delete stuff we don't need
+echo ">>>>> Removing bloat from /usr/share"
+rm -rf /usr/share/doc
+rm -rf /usr/share/icons
+
+echo '>>>>> all done with %post'
+echo '*****************************************'
+%end
+
+%post --nochroot
+echo "Copy initramfs outside the chroot:"
+ls $INSTALL_ROOT/lib/modules | while read kernel; do
+  src="$INSTALL_ROOT/boot/initramfs-${kernel}.img"
+  dst="$LIVE_ROOT/isolinux/initrd0.img"
+  echo " > $src -> $dst"
+  cp -f $src $dst
+done
+%end

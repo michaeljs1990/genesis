@@ -13,6 +13,7 @@ repo --name=base      --baseurl=http://ftp.scientificlinux.org/linux/scientific/
 repo --name=epel      --baseurl=http://mirrors.rit.edu/epel/6/x86_64/
 repo --name=fastbugs  --baseurl=http://ftp.scientificlinux.org/linux/scientific/6x/x86_64/updates/fastbugs/
 repo --name=security  --baseurl=http://ftp.scientificlinux.org/linux/scientific/6x/x86_64/updates/security/
+repo --name=elrepo    --baseurl=http://www.elrepo.org/
 repo --name=local     --baseurl=http://localhost:8000/repo/
 
 %packages
@@ -58,6 +59,8 @@ traceroute
 util-linux-ng
 vim-minimal
 yum
+vim
+
 # needed for rvm
 gpgme
 which
